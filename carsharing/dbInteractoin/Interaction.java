@@ -5,7 +5,7 @@ import java.sql.*;
 public class Interaction {
     private static final java.lang.String JDBC_DRIVER = "org.h2.Driver";
     private String DB_URL;
-    private final static String selectQuery = "SELECT * FROM company ORDER BY id";
+    private final static String selectQuery = "SELECT name FROM company ORDER BY ID;";
 
     public Interaction(String[] args) {
         String name = "someName";
@@ -19,34 +19,71 @@ public class Interaction {
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
+        // creating tables with one to many relationships
+        createCompanyTable();
+        createCarTable();
     }
 
-    public void getCompanies() {
+    public boolean getCompanies() {
+        boolean isEmpty = true;
         try (Connection conn = DriverManager.getConnection(DB_URL);
              Statement stmt = conn.createStatement()) {
             // opening a connection
-            // changes will be saved automatically
-            conn.setAutoCommit(true);
 
             // preparing a query
             ResultSet result = stmt.executeQuery(selectQuery);
             // print the result
-            printCompanies(result);
+            isEmpty = !printCompanies(result);
             // cleaning the environment
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
+        return isEmpty;
     }
 
-    private void printCompanies(ResultSet rs) throws SQLException {
+    // method returns true if at least one company was printed
+    private boolean printCompanies(ResultSet rs) throws SQLException {
+        boolean result = false;
         if (rs == null) {
             System.out.println("smth went wrong, try again later");
         } else if (!rs.isBeforeFirst()) {
             System.out.println("The company list is empty!");
         } else {
-            System.out.println("Company list:");
+            System.out.println("Choose the company:");
+            int inedx = 1;
             while (rs.next()) {
-                System.out.printf("%d. %s\n", rs.getInt(1), rs.getString(2));
+                System.out.printf("%d. %s\n", inedx++, rs.getString(1));
+            }
+            System.out.println("0. Back");
+            result = true;
+        }
+        return result;
+    }
+
+    // foreign key is a car company's id
+    public void getCars(int foreignKey) {
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             Statement stmt = conn.createStatement()) {
+            String query = "SELECT name FROM car WHERE company_id = " + foreignKey +
+                    " ORDER BY id;";
+            ResultSet resultSet = stmt.executeQuery(query);
+            // calling a method for printing cars
+            printCars(resultSet);
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+    }
+
+    private void printCars(ResultSet rs) throws SQLException {
+        if (rs == null) {
+            System.out.println("Smth went wrong, try again later");
+        } else if (!rs.isBeforeFirst()) {
+            System.out.println("The car list is empty!");
+        } else {
+            System.out.println("Car list:");
+            int index = 1;
+            while (rs.next()) {
+                System.out.printf("%d. %s\n", index++, rs.getString("name"));
             }
         }
     }
@@ -70,20 +107,77 @@ public class Interaction {
         }
     }
 
-    public void createDB() {
+    public boolean isCompanyPresent(int id) {
+        boolean result = false;
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             Statement stmt = conn.createStatement()) {
+            String query = "SELECT name FROM company WHERE ID = " + id;
+            ResultSet rs = stmt.executeQuery(query);
+            // set is not empty
+            if (rs.isBeforeFirst()) {
+                result = true;
+                rs.next();
+                System.out.printf("'%s' company\n", rs.getString(1));
+
+            } else {
+                System.out.println("There is no such company!");
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return result;
+    }
+
+    // foreignKey is a company's id
+    public void insertCar(String name, int foreignKey) {
+        // opening a connection
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(true);
+
+            String query = "INSERT INTO car (name, company_id)" +
+                    "VALUES ('" + name + "', " + foreignKey + ");";
+
+            stmt.execute(query);
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+    }
+
+    private void createCompanyTable() {
         // open a connection
         try (Connection conn = DriverManager.getConnection(DB_URL);
              Statement stmt = conn.createStatement()) {
             // all changes are saved automatically into the db
             conn.setAutoCommit(true);
             // dropping the table
-            stmt.execute("DROP TABLE company");
+            // It is commented to pass tests
+            stmt.execute("DROP TABLE IF EXISTS car");
+            stmt.execute("DROP TABLE IF EXISTS company");
             // creating the table with two columns
             String query = "CREATE TABLE company" +
-                    "(id INTEGER PRIMARY KEY AUTO_INCREMENT, name VARCHAR(100) UNIQUE NOT NULL)";
+                    "(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(100) UNIQUE NOT NULL)";
             stmt.executeUpdate(query);
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void createCarTable() {
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             Statement stmt = conn.createStatement()) {
+            // changes will be saved
+            conn.setAutoCommit(true);
+            //  stmt.execute("DROP TABLE car");
+
+            String query = "CREATE TABLE car" +
+                    "(id INTEGER PRIMARY KEY AUTO_INCREMENT, name VARCHAR(100) UNIQUE NOT NULL," +
+                    "company_id INT NOT NULL," +
+                    "CONSTRAINT fk_company FOREIGN KEY(company_id)" +
+                    "REFERENCES company(id));";
+            stmt.execute(query);
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
         }
     }
 }

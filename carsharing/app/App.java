@@ -10,51 +10,93 @@ public class App {
     private static final String manageMenu = "1. Company list\n" +
             "2. Create a company\n" +
             "0. Back";
+    private static final String carMenu = "1. Car list\n" +
+            "2. Create a car\n" +
+            "0. Back";
+    private Scanner scan;
 
     public App(String[] args) {
         interactionWithDb = new Interaction(args);
+        scan = new Scanner(System.in);
     }
 
     public void run() {
-        interactionWithDb.createDB();
-        Scanner scan = new Scanner(System.in);
-        boolean mainFlag = true;
-        while (mainFlag) {
-            printMainMenu();
-            int mainAct = scan.nextInt();
-            System.out.println();
-            switch (mainAct) {
-                // log in as a manger
-                case 1:
-                    boolean manageFlag = true;
-                    // manger loop
-                    while (manageFlag) {
-                        printManageMenu();
-                        int manageAct = scan.nextInt();
-                        System.out.println();
-                        switch (manageAct) {
-                            case 1:
-                                // prints all companies
-                                interactionWithDb.getCompanies();
-                                System.out.println();
-                                break;
-                            case 2:
-                                // adding a new company
-                                scan.nextLine();
-                                System.out.println("Enter the company name:");
-                                interactionWithDb.insertCompany(scan.nextLine());
-                                System.out.println("The company was created!\n");
-                                break;
-                            case 0:
-                                manageFlag = false;
-                                break;
-                            default:
-                                System.out.println("there is no such option");
-                        }
+        boolean falg = true;
+        while (falg) {
+            if (mainMenu()) {
+                do {
+                    printManagerMenu();
+                } while (managerMenu());
+            } else {
+                falg = false;
+            }
+        }
+    }
+
+    private boolean mainMenu() {
+        printMainMenu();
+        return scan.nextInt() == 1;
+    }
+
+    private boolean managerMenu() {
+        int action = scan.nextInt();
+        scan.nextLine(); // cleaning the line
+        boolean flag = false;
+
+        switch (action) {
+            // print all companies
+            case 1:
+                if (!interactionWithDb.getCompanies()) {
+                    hiddenCarMenu();
+                }
+                flag = true;
+                break;
+            // adding a company
+            case 2:
+                System.out.println("Enter the company name:");
+                interactionWithDb.insertCompany(scan.nextLine());
+                System.out.println("The company was created!");
+                flag = true;
+                break;
+            case 0:
+            default:
+                break;
+        }
+        return flag;
+    }
+
+    // car menu
+    private void hiddenCarMenu() {
+        int companyNum = scan.nextInt();
+        // cleaning the input
+        scan.nextLine();
+        boolean flag = true;
+        while (flag && companyNum != 0) {
+            if (interactionWithDb.isCompanyPresent(companyNum)) {
+                boolean flag1 = true;
+                while (flag1) {
+                    printCarMenu();
+                    int option = scan.nextInt();
+                    scan.nextLine();
+                    switch (option) {
+                        // printing company's cars
+                        case 1:
+                            interactionWithDb.getCars(companyNum);
+                            break;
+                        case 2:
+                            // adding new car
+                            System.out.println("Enter the car name:");
+                            interactionWithDb.insertCar(scan.nextLine(), companyNum);
+                            System.out.println("The car was added!");
+                            break;
+                        default:
+                            flag1 = false;
+                            flag = false;
+                            break;
                     }
-                    break;
-                case 0:
-                    mainFlag = false;
+                }
+            } else {
+                flag = false;
             }
         }
     }
@@ -63,7 +105,11 @@ public class App {
         System.out.println(mainMenu);
     }
 
-    private void printManageMenu() {
+    private void printManagerMenu() {
         System.out.println(manageMenu);
+    }
+
+    private void printCarMenu() {
+        System.out.println(carMenu);
     }
 }
