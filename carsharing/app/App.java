@@ -1,115 +1,80 @@
 package carsharing.app;
 
-import carsharing.dbInteractoin.Interaction;
+
+import carsharing.customer.CustomerDao;
+import carsharing.customer.CustomerDaoImpl;
+import carsharing.roles.CustomerRole;
+import carsharing.roles.ManagerRole;
+import carsharing.storage.Storage;
 
 import java.util.Scanner;
 
 public class App {
-    private Interaction interactionWithDb;
-    private static final String mainMenu = "1. Log in as a manager\n0. Exit";
-    private static final String manageMenu = "1. Company list\n" +
-            "2. Create a company\n" +
-            "0. Back";
-    private static final String carMenu = "1. Car list\n" +
-            "2. Create a car\n" +
-            "0. Back";
-    private Scanner scan;
+
+    public static final String BACK = "0. Back";
+    private final Scanner scan;
+    private final CustomerDao customerDao;
+    private final String pathToDb;
 
     public App(String[] args) {
-        interactionWithDb = new Interaction(args);
+        if (args.length > 1) {
+            pathToDb = args[1];
+        } else {
+            pathToDb = "default name1";
+        }
+        // initializing db
+        Storage storage = new Storage(pathToDb);
+        storage.createTables();
+
+        // object is used to create customers
+        customerDao = new CustomerDaoImpl(pathToDb);
+
         scan = new Scanner(System.in);
     }
 
     public void run() {
-        boolean falg = true;
-        while (falg) {
-            if (mainMenu()) {
-                do {
-                    printManagerMenu();
-                } while (managerMenu());
-            } else {
-                falg = false;
+        ManagerRole manager = new ManagerRole(pathToDb);
+        CustomerRole customer = new CustomerRole(pathToDb);
+
+        int action;
+        do {
+            printMainMenu();
+            action = scan.nextInt();
+            scan.nextLine();
+            System.out.println();
+            switch (action) {
+                // exit
+                case 0:
+                    break;
+                // login as a manager
+                case 1:
+                    manager.loginAsManager();
+                    break;
+                // login as a customer
+                case 2:
+                    customer.logInAsCustomer();
+                    break;
+                case 3:
+                    // create customer
+                    createCustomer();
+                    break;
+                default:
+                    System.out.println("No such option");
             }
-        }
+        } while (action != 0);
     }
 
-    private boolean mainMenu() {
-        printMainMenu();
-        return scan.nextInt() == 1;
+    private void createCustomer() {
+        System.out.println("Enter the customer name:");
+        String name = scan.nextLine();
+        customerDao.createCustomer(name);
+        System.out.println("The customer was added!\n");
     }
 
-    private boolean managerMenu() {
-        int action = scan.nextInt();
-        scan.nextLine(); // cleaning the line
-        boolean flag = false;
-
-        switch (action) {
-            // print all companies
-            case 1:
-                if (!interactionWithDb.getCompanies()) {
-                    hiddenCarMenu();
-                }
-                flag = true;
-                break;
-            // adding a company
-            case 2:
-                System.out.println("Enter the company name:");
-                interactionWithDb.insertCompany(scan.nextLine());
-                System.out.println("The company was created!");
-                flag = true;
-                break;
-            case 0:
-            default:
-                break;
-        }
-        return flag;
-    }
-
-    // car menu
-    private void hiddenCarMenu() {
-        int companyNum = scan.nextInt();
-        // cleaning the input
-        scan.nextLine();
-        boolean flag = true;
-        while (flag && companyNum != 0) {
-            if (interactionWithDb.isCompanyPresent(companyNum)) {
-                boolean flag1 = true;
-                while (flag1) {
-                    printCarMenu();
-                    int option = scan.nextInt();
-                    scan.nextLine();
-                    switch (option) {
-                        // printing company's cars
-                        case 1:
-                            interactionWithDb.getCars(companyNum);
-                            break;
-                        case 2:
-                            // adding new car
-                            System.out.println("Enter the car name:");
-                            interactionWithDb.insertCar(scan.nextLine(), companyNum);
-                            System.out.println("The car was added!");
-                            break;
-                        default:
-                            flag1 = false;
-                            flag = false;
-                            break;
-                    }
-                }
-            } else {
-                flag = false;
-            }
-        }
-    }
-
-    private void printMainMenu() {
-        System.out.println(mainMenu);
-    }
-
-    private void printManagerMenu() {
-        System.out.println(manageMenu);
-    }
-
-    private void printCarMenu() {
-        System.out.println(carMenu);
+    private static void printMainMenu() {
+        System.out.println("1. Log in as a manager\n" +
+                "2. Log in as a customer\n" +
+                "3. Create a customer\n" +
+                "0. Exit");
     }
 }
